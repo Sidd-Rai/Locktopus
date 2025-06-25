@@ -30,7 +30,6 @@
 
 - **Multi-theme UI**
   - Light, Dark, Brown, and Beige themes
-  - AMOLED-friendly styling
   - Seamless theme toggle button
 
 ---
