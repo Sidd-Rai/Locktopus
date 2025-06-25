@@ -18,10 +18,15 @@ config = {
     "guesses_per_second": 1e9
 }
 
-DICTIONARY = {
-    "password", "admin", "welcome", "login", "qwerty", "love",
-    "letmein", "test", "dragon", "sunshine", "master"
-}
+def load_dictionary(path="./dictionary.txt"):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return set(line.strip().lower() for line in f if line.strip())
+    except FileNotFoundError:
+        print("⚠️ dictionary.txt not found. Continuing with empty dictionary.")
+        return set()
+
+DICTIONARY = load_dictionary()
 
 theme = {
     "light": {
