@@ -17,6 +17,69 @@ config = {
     "disallowed_words": {"siddharth", "gmail", "123"},
     "guesses_per_second": 1e9
 }
+import re
+from datetime import datetime
+
+def detect_advanced_patterns(password):
+    pw = password.lower()
+    patterns = []
+
+    # 1. Repeated characters (e.g., "aaa", "1111")
+    if re.search(r'(.)\1{2,}', pw):
+        patterns.append("🔁 Repeated characters")
+
+    # 2. Repeated substrings (e.g., "abcabcabc")
+    for size in range(2, len(pw) // 2 + 1):
+        chunk = pw[:size]
+        if chunk * (len(pw) // size) == pw:
+            patterns.append(f"♻ Repeated substring: '{chunk}'")
+            break
+
+    # 3. Palindromes (e.g., "racecar", "abba")
+    if pw == pw[::-1] and len(pw) > 4:
+        patterns.append("🔄 Palindrome pattern")
+
+    # 4. Keyboard sequences
+    keyboard_seqs = ['qwerty', 'asdf', 'zxcv', '1qaz', '2wsx']
+    if any(seq in pw for seq in keyboard_seqs):
+        patterns.append("⌨️ Common keyboard pattern")
+
+    # 5. Alphabetic sequences
+    alphabet = "abcdefghijklmnopqrstuvwxyz"
+    for i in range(len(pw) - 2):
+        chunk = pw[i:i+3]
+        if chunk in alphabet or chunk in alphabet[::-1]:
+            patterns.append("🔤 Alphabetic sequence")
+            break
+
+    # 6. Numeric sequences
+    numbers = "0123456789"
+    for i in range(len(pw) - 2):
+        chunk = pw[i:i+3]
+        if chunk in numbers or chunk in numbers[::-1]:
+            patterns.append("🔢 Numeric sequence")
+            break
+
+    # 7. Date or year patterns
+    if re.search(r'(19\d{2}|20[0-2]\d)', pw):
+        patterns.append("📅 Year pattern (e.g. 1999, 2023)")
+    if re.search(r'\d{2}[/-]\d{2}[/-]\d{4}', pw) or re.search(r'\d{8}', pw):
+        patterns.append("📆 Date-like pattern (e.g. 25062025 or 25/06/2025)")
+
+    # 8. Common usernames/admins
+    common_words = {"admin", "guest", "root", "user", "test"}
+    if any(word in pw for word in common_words):
+        patterns.append("🧑‍💻 Common placeholder/admin words")
+
+    # 9. Simple regex categories
+    if re.fullmatch(r'[a-zA-Z]+', pw):
+        patterns.append("🅰️ Only letters")
+    if re.fullmatch(r'\d+', pw):
+        patterns.append("🔢 Only digits")
+    if re.fullmatch(r'[!@#$%^&*()_+\-=\[\]{};:\'",.<>/?\\|`~]+', pw):
+        patterns.append("🔣 Only symbols")
+
+    return patterns
 
 def load_dictionary(path="./dictionary.txt"):
     try:
@@ -144,17 +207,24 @@ def estimate_crack_time(entropy):
 def detect_patterns(password):
     pw = password.lower()
     patterns = []
+
+    # 1. Repeated characters (aaa, bbbb)
     if re.search(r'(.)\1{' + str(config["max_repeating_chars"]) + ',}', pw):
         patterns.append("🔁 Repeated characters")
-    if re.search(r'(.+?)\1{1,}', pw):
-        patterns.append("🧩 Repeating chunks")
-    for size in range(1, config["max_repeating_substring"] + 1):
-        part = pw[:size]
-        if part * (len(pw) // size) == pw:
-            patterns.append(f"♻ Repeated substring: '{part}'")
+
+    # 2. Repeating chunk patterns like ababab or xyzxyz
+    for size in range(2, len(pw) // 2 + 1):
+        chunk = pw[:size]
+        if chunk * (len(pw) // size) == pw:
+            patterns.append(f"🧩 Repeating chunk pattern: '{chunk}'")
+            break
+
+    # 3. Common keyboard sequences
     if re.search(r'(123|1234|abcd|qwer|asdf|zxcv)', pw):
         patterns.append("🔡 Common keyboard pattern")
+
     return patterns
+
 
 def detect_dictionary_words(password):
     return sorted({word for word in DICTIONARY if word in password.lower()})
@@ -215,7 +285,10 @@ def update_feedback(*args):
     patterns = detect_patterns(pw)
     context_hits = detect_context(pw)
     regex_issues = apply_regex_checks(pw)
-    issues = dict_words + patterns + context_hits + regex_issues
+    # issues = dict_words + patterns + context_hits + regex_issues
+    advanced_patterns = detect_advanced_patterns(pw)
+    issues = dict_words + patterns + advanced_patterns + context_hits + regex_issues
+
     score = score_password(pw, rules, entropy, issues)
     strength, color = strength_label(score)
     for i, (r, ok) in enumerate(rules.items()):
